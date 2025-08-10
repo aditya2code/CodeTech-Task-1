@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dynamic Quiz Application</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .answer-btn.correct {
+            background-color: #22c55e !important; /* green-500 */
+            color: white !important;
+            border-color: #16a34a !important; /* green-600 */
+        }
+        .answer-btn.incorrect {
+            background-color: #ef4444 !important; /* red-500 */
+            color: white !important;
+            border-color: #dc2626 !important; /* red-600 */
+        }
+    </style>
+</head>
+<body class="bg-gray-100 dark:bg-gray-900 flex items-center justify-center min-h-screen p-4 transition-colors duration-300">
+
+    <div id="quiz-container" class="w-full max-w-2xl bg-white dark:bg-gray-800 rounded-2xl shadow-2xl p-6 md:p-8 text-center">
+        
+        <!-- Header Section -->
+        <div class="mb-6">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-800 dark:text-white">CodTech T1 Quiz</h1>
+            <p class="text-gray-600 dark:text-gray-300 mt-2">Test your knowledge!</p>
+        </div>
+
+        <!-- Main Content: Question and Answers -->
+        <div id="main-content">
+            <div id="question-container" class="mb-6">
+                <p id="question-text" class="text-xl md:text-2xl font-semibold text-gray-700 dark:text-gray-200 min-h-[80px] flex items-center justify-center"></p>
+            </div>
+            <div id="answer-buttons" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <!-- Answer buttons will be dynamically inserted here -->
+            </div>
+        </div>
+
+        <!-- Score and Controls -->
+        <div id="controls-container" class="mt-8 flex items-center justify-between">
+            <div id="score-container" class="text-lg font-medium text-gray-700 dark:text-gray-200">
+                Score: <span id="score" class="font-bold">0</span>
+            </div>
+            <button id="next-btn" class="px-6 py-3 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105 hidden">Next Question</button>
+        </div>
+
+        <!-- Final Results Section -->
+        <div id="results-container" class="hidden">
+            <h2 class="text-2xl md:text-3xl font-bold text-gray-800 dark:text-white mb-4">Quiz Complete!</h2>
+            <p class="text-lg text-gray-600 dark:text-gray-300 mb-6">Your final score is <span id="final-score" class="font-bold text-indigo-600 dark:text-indigo-400 text-2xl"></span></p>
+            <button id="restart-btn" class="px-8 py-4 bg-indigo-600 text-white font-semibold rounded-lg shadow-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-transform transform hover:scale-105">
+                Restart Quiz
+            </button>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA: Quiz Questions ---
+        // An array of objects, where each object represents a question.
+        const quizData = [
+            {
+                question: "What does HTML stand for?",
+                answers: [
+                    { text: "Hyper Trainer Marking Language", correct: false },
+                    { text: "Hyper Text Markup Language", correct: true },
+                    { text: "Hyperlinks and Text Markup Language", correct: false },
+                    { text: "Home Tool Markup Language", correct: false }
+                ]
+            },
+            {
+                question: "Which language is used for styling web pages?",
+                answers: [
+                    { text: "HTML", correct: false },
+                    { text: "JQuery", correct: false },
+                    { text: "CSS", correct: true },
+                    { text: "XML", correct: false }
+                ]
+            },
+            {
+                question: "What is the purpose of the `let` keyword in JavaScript?",
+                answers: [
+                    { text: "To declare a global variable", correct: false },
+                    { text: "To declare a block-scoped local variable", correct: true },
+                    { text: "To declare a constant", correct: false },
+                    { text: "To create a function", correct: false }
+                ]
+            },
+            {
+                question: "Which company developed JavaScript?",
+                answers: [
+                    { text: "Microsoft", correct: false },
+                    { text: "Apple", correct: false },
+                    { text: "Sun Microsystems", correct: false },
+                    { text: "Netscape", correct: true }
+                ]
+            },
+            {
+                question: "What does the `===` operator do in JavaScript?",
+                answers: [
+                    { text: "Assigns a value to a variable", correct: false },
+                    { text: "Compares for equality of value", correct: false },
+                    { text: "Compares for equality of both value and type", correct: true },
+                    { text: "Checks if a value is greater than another", correct: false }
+                ]
+            }
+        ];
+
+        // --- DOM Element References ---
+        const quizContainer = document.getElementById('quiz-container');
+        const questionText = document.getElementById('question-text');
+        const answerButtons = document.getElementById('answer-buttons');
+        const nextButton = document.getElementById('next-btn');
+        const scoreElement = document.getElementById('score');
+        const mainContent = document.getElementById('main-content');
+        const controlsContainer = document.getElementById('controls-container');
+        const resultsContainer = document.getElementById('results-container');
+        const finalScoreElement = document.getElementById('final-score');
+        const restartButton = document.getElementById('restart-btn');
+
+        // --- State Variables ---
+        let currentQuestionIndex = 0;
+        let score = 0;
+
+        /**
+         * Initializes the quiz or resets it to the beginning.
+         */
+        function startQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            scoreElement.innerText = score;
+            nextButton.classList.add('hidden');
+            resultsContainer.classList.add('hidden');
+            mainContent.classList.remove('hidden');
+            controlsContainer.classList.remove('hidden');
+            showQuestion();
+        }
+
+        /**
+         * Displays the current question and its answer options.
+         */
+        function showQuestion() {
+            resetState();
+            const currentQuestion = quizData[currentQuestionIndex];
+            questionText.innerText = currentQuestion.question;
+
+            // Create and append buttons for each answer
+            currentQuestion.answers.forEach(answer => {
+                const button = document.createElement('button');
+                button.innerText = answer.text;
+                button.classList.add('answer-btn', 'w-full', 'p-4', 'text-left', 'bg-gray-100', 'dark:bg-gray-700', 'text-gray-800', 'dark:text-gray-200', 'rounded-lg', 'border-2', 'border-gray-200', 'dark:border-gray-600', 'hover:bg-gray-200', 'dark:hover:bg-gray-600', 'focus:outline-none', 'focus:ring-2', 'focus:ring-indigo-500', 'transition-all', 'duration-200');
+                if (answer.correct) {
+                    button.dataset.correct = answer.correct;
+                }
+                button.addEventListener('click', selectAnswer);
+                answerButtons.appendChild(button);
+            });
+        }
+
+        /**
+         * Resets the state of the answer buttons and hides the 'Next' button.
+         */
+        function resetState() {
+            nextButton.classList.add('hidden');
+            while (answerButtons.firstChild) {
+                answerButtons.removeChild(answerButtons.firstChild);
+            }
+        }
+
+        /**
+         * Handles the logic when a user clicks an answer button.
+         * @param {Event} e The click event object.
+         */
+        function selectAnswer(e) {
+            const selectedBtn = e.target;
+            const isCorrect = selectedBtn.dataset.correct === 'true';
+
+            // Update score if correct
+            if (isCorrect) {
+                score += 10;
+                scoreElement.innerText = score;
+            }
+
+            // Provide visual feedback for all buttons
+            Array.from(answerButtons.children).forEach(button => {
+                setStatusClass(button, button.dataset.correct === 'true');
+                button.disabled = true; // Disable buttons after an answer is chosen
+            });
+
+            // Show 'Next' button if there are more questions
+            if (quizData.length > currentQuestionIndex + 1) {
+                nextButton.classList.remove('hidden');
+            } else {
+                // If it's the last question, show the results
+                showResults();
+            }
+        }
+
+        /**
+         * Applies 'correct' or 'incorrect' CSS classes to a button.
+         * @param {HTMLElement} element The button element.
+         * @param {boolean} correct Whether the answer is correct.
+         */
+        function setStatusClass(element, correct) {
+            clearStatusClass(element);
+            if (correct) {
+                element.classList.add('correct');
+            } else {
+                element.classList.add('incorrect');
+            }
+        }
+
+        /**
+         * Removes status classes from a button.
+         * @param {HTMLElement} element The button element.
+         */
+        function clearStatusClass(element) {
+            element.classList.remove('correct');
+            element.classList.remove('incorrect');
+        }
+
+        /**
+         * Displays the final score and the restart button.
+         */
+        function showResults() {
+            mainContent.classList.add('hidden');
+            controlsContainer.classList.add('hidden');
+            resultsContainer.classList.remove('hidden');
+            finalScoreElement.innerText = `${score} / ${quizData.length * 10}`;
+        }
+
+        /**
+         * Moves to the next question.
+         */
+        function handleNextButton() {
+            currentQuestionIndex++;
+            showQuestion();
+        }
+
+        // --- Event Listeners ---
+        nextButton.addEventListener('click', handleNextButton);
+        restartButton.addEventListener('click', startQuiz);
+
+        // --- Initial Load ---
+        document.addEventListener('DOMContentLoaded', startQuiz);
+    </script>
+</body>
+</html>
